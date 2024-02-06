@@ -1,0 +1,191 @@
+# YAML es un formato (lenguaje) para intercambio de información estructurada
+# Similar a lo que serían XML o JSON
+# Es un lenguaje que se está imponiendo en el mercado: Kubernetes, Ansible, Docker compose, GITLAB CI/CD, AZURE DEVOPS, Ubuntu
+# Está muy orientado a humanos... Facilitar la escritura y legibilidad
+
+# En los documentos yaml podemos poner comentarios (no como en JSON) ... ALELUYA !
+# Para eso usamos el cuadradito
+
+# En un fichero YAML podemos meter MUCHOS documentos YAML (cosa que no puedo hacer ni en XML ni en JSON)
+
+# Existe una marca de principio de documento
+---
+# Esa marca es obligatoria a partir del segundo documento del fichero
+---
+# Hay una marca (OPCIONAL) que no vereis nunca... más que a algún friki que incida final de doucmento
+...
+### A la hora!
+---
+# Esa marca SOLO tiene sentido si mandamos documentos via streaming
+# En un fichero NO TIENE SENTIDO
+# Un documento YAML consta de UN NODO.
+# En YAML hay 2 tipos de nodos: ESCALARES / DE COLECCION
+---
+# Nodos escalares: albergan unn único valor:
+---
+# Nodos escalares NUMERICOS
+3
+---
+-5
+---
+2.789
+---
+-.Inf # .inf .INF
+---
+.Nan #.nan .NAN
+---
+345
+---
+-983.98
+---
+# Nodos escalares LOGICO / BOOLEANOS
+true # TRUE True
+---
+false # FALSE False
+---
+# NOTA y OJO !!!!
+# Hoy en día YAML está en versión 1.2
+# En la versión 1.1 se admitian también:
+# on On Yes YES yes y
+# off Off No no NO n
+# como valores lógicos. NO SE ADMITEN YA... cambiar en cuanto vea algo como esto en un YAML fusilao de internet
+# Lo hicieron mu mal... No lo deprecaron... Dando tiempo a que la gente cambiara esos valores en sus YAML
+# Y muchos parsers de YAML para evitar el sufrimiento/suicidio de los desarrolladores siguen admitiendolos
+# PERO CUIDAO QUE CUALUIQER DIA LOS QUITAN SIN AVISO
+---
+# Nodo escalar NULO:
+~
+---
+# Nodos de texto: LO MAS COMPLEJO DE YAML
+Esto "es un 'texto\n en #YAML
+Si pongo esto, se junta con la linea anterior, reemplazando el salto de linea por un espacio
+
+Ahora si
+---
+"Esto \"es un 'texto\n en #YAML
+Si pongo esto, se junta con la linea anterior, reemplazando el salto de linea por un espacio
+
+Ahora si"
+---
+'Esto "es un ''texto\n en #YAML
+Si pongo esto, se junta con la linea anterior, reemplazando el salto de linea por un espacio
+
+Ahora si'
+# Todas esas formas representan el mismo texto
+# La contrabarra solo se puede usar como caracter de escape entre comillas dobles
+# Si quiero saltos de linea debo meter 2 saltos de linea
+---
+# NUNCA usamos dos saltos de linea para poner un s salto de linea
+# Para textos más complejos, YAML ofrece otras 2 sintaxis adicionales
+# Sintaxis literal
+|4-
+     Escribo mi texto
+    Con los saltos de linea
+     Y caracteres raros \#`" - l: lo que\n quier...
+     Se lee tal cual
+     Salvo el tabulñado... Se quita a todas las lineas el de la primera
+     Siempre con un salto de linea al final
+---
+# Sintaxis folded
+# Similar a la literal, pero los saltos de linea se reemplazan por espacios
+> 
+    linea 1
+    linea 2
+    linea 3 " \#:-
+---
+# Super util para comandos
+>5+   
+    docker container create
+            --name Ivan
+            -p 80:8080
+            ivan:latest
+---
+# NODOS DE COLECCION: listas ordenadas y mapas desordenados
+# Listas ordenadas:
+- item 1
+-    item 2
+- 33
+-           true
+- 
+    - subitem 1
+    - subitem 2
+-   - subitem 1
+    - subitem 2
+---
+# Las sublistas es obligatoriosangrarlas a la derecha... Cuánto? LO QUE QUIER, pero siendo consistente en cada nivel y cada elemento
+- item1
+- - subitem1
+  - subitem 2 # GUAY
+-   - subitem1
+    - subitem 2 # GUAY TAMBIEN
+-   - subitem1
+     - subitem 2 # RUINA !
+---
+# Sintaxis alternativa poara listas:
+[ item1, item2, 33, true]
+# NO RECOMENDADA ! NO USAR ! Solo está por 2 motivos:
+# 1. Compatibilidad con JSON. YAML se ha tragado a JSON (literalmente en la espec)
+---
+[ "item1", "item2", 33, true]
+# Pero no lo hacemos... por varios motivos: MENOS LEGIBLE y El documento siempre irá guardado en GIT
+# GIT busca diferencias a nivel de LINEA de texto... No podría identificar en GIT qué item de la lista ha cambiado... si los pongo en la misma linea
+---
+- item1
+- item2
+- 33
+- true
+# Salvo en el caso:
+# 2. Listas vacias: 
+---
+[]
+---
+# Mapas desordenados: Colecciones de valores identificados por una clave: Map, Diccionario, Array Asociativo
+clave1: valor1
+clave2: 33
+clave3: True
+clave4: - item1
+        - item2
+clave5: 
+    subclave5.1: item1
+    subclave5.2: item2
+    
+# Aplican las mismas reglas de sangrado que a sublistas
+---
+# Sintaxis alternativa: 
+{ clave1: valor1, vlave2: 33 }
+# Mismos comentarios que en la sintaxis alternativa de listas
+---
+{} # Mapa vacio
+---
+# NOTA: Ya explicitado... pero por si aca!
+clave1: item1
+clave2: item2
+---
+clave2: item2
+clave1: item1
+---
+# Esos 2 mapas son IGUALES: SON MAPAS DESORDENADOS
+# Raro... pero por si aca... Las clkaves opcionalmnete pueden ir precedidas dee un ?
+?clave2: item2
+?clave1: item1
+# Está para cosas muy locas que se pueden hacer con yamol:
+?
+- item1
+- item2
+: 
+33
+Tengo un item de un mapa, cuya clave es la lista item1, item2... y su valor el 33
+---
+# YAML ofrece una sintaxis de proposito GENERAL para estructurar información.
+# Muchos programas usan YAML, como Kubernetes
+# Cada uno de ello define su propio ESQUEMA YAML
+# Un ESQUEMA YAML define la estructura que debe tener un documento YAML para poder ser procesado por un PROGRAMA CONCRETO
+# Kubernetes tiene su esquema, que indica que estructura deben tener sus ficheros:
+# - Que palabras se pueden usar como claves
+# - Los tipos de datos asociados a cada clave...
+---
+apiVersion: ""
+kind: ""
+metadata:
+    name: ""
+    labels: []
