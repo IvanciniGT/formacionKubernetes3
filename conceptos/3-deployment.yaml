@@ -1,3 +1,4 @@
+# $ kubectl scale deployment deployment1 -n ivan --replicas 5
 apiVersion: apps/v1
 kind:       Deployment
 
@@ -20,6 +21,7 @@ spec:
             containers:
                 - name:     contenedor1
                   image:    nginx:latest
+                  imagePullPolicy:  IfNotPresent
                   env:
                     - name:  variable1
                       value: valor1
@@ -32,6 +34,7 @@ spec:
         
                 - name:     contenedor2
                   image:    ubuntu:latest
+                  imagePullPolicy:  IfNotPresent
                   command:
                     - sleep
                     - "3600"
