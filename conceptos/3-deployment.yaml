@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind:       Deployment
+
+metadata:
+    name:       deployment1
+
+spec:
+    replicas:   3
+    
+    selector:
+        matchLabels:
+            app:        nginx
+    
+    template:
+        metadata:
+            name:       plantilla-pod-1
+            labels:
+                        app: nginx # app no es ninguna palabra reservada... aunque si un convenio
+        spec:
+            containers:
+                - name:     contenedor1
+                  image:    nginx:latest
+                  env:
+                    - name:  variable1
+                      value: valor1
+                    - name:  variable2
+                      value: valor2
+                  ports: 
+                    - name: web
+                      containerPort: 80
+                      protocol: TCP
+        
+                - name:     contenedor2
+                  image:    ubuntu:latest
+                  command:
+                    - sleep
+                    - "3600"

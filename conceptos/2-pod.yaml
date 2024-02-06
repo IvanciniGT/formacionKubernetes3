@@ -1,0 +1,37 @@
+apiVersion: v1
+kind:       Pod
+
+metadata:
+    name:       pod1
+    #namespace:  ivan           SALVO CASOS MUY ESPECIALES: NUNCA SE PONE NAMESPACE
+    #                           El mismo pod puede ser que quiera desplegarlo en varios NS: desarrollo, pruebas, produccion
+    #                           Lo que hacemos es indicar el ns al hacer el apply
+
+spec:
+    containers:
+        - name:     contenedor1
+          image:    nginx:latest
+          env:
+            - name:  variable1
+              value: valor1
+            - name:  variable2
+              value: valor2
+          ports: # Esto es informacional... Funcionalmente no hace nada (DOCUMENTACION!)
+            - name: web
+              containerPort: 80
+              protocol: TCP
+
+        - name:     contenedor2
+          image:    ubuntu:latest
+          command:
+            - sleep
+            - "3600"
+
+# $ kubectl logs pod1 -c contanedor1 -n ivan          
+# Como el nuestro tiene solo 1, puedo poner: 
+# $ kubectl logs pod1 -n ivan   
+
+# $ kubectl exec -it pod1 -c contanedor1 -n ivan -- bash
+# Como el nuestro tiene solo 1, puedo poner: 
+# $ kubectl exec -it pod1 -n ivan -- bash
+

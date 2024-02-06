@@ -1,0 +1,28 @@
+                # Kubernetes define unos cuantos tipos de objetos
+                # Pero es extensible mediante CRD: Custom Resource Definitions
+                # Dentro de un cluster de Kubernetes podemos instalar librerías adicionales
+                # Que amplian la cantidad de objetos (el tipo de objetos) que puedo crear en el cluster
+                # La librería básica me permite cread: pods, namespaces, configmap, services
+                # Otras librerias opcionales me permiten más tipos de objetos
+                # En apiVersion ponemos la librería que define este tipo de objeto que estamos creando
+                # el formato es :       libreria/version
+                # Salvo para la librería básica de kubernetes, que omitimos el nombre de la librería (y por ende la barra)
+apiVersion:     v1
+kind:           Namespace
+
+metadata:
+    name:       ivan
+
+--- 
+# $ kubectl apply -f 1-namespace.yaml 
+# namespace/ivan created
+# $ kubectl delete -f 1-namespace.yaml                                                
+# namespace "ivan" deleted
+# $ kubectl create -f 1-namespace.yaml                                                
+# namespace/ivan created
+# $ kubectl delete namespace ivan
+# namespace "ivan" deleted
+# $ kubectl create ns ivan             <<<<<<<< PROHIBIDO ! Salvo para una cutre prueba!
+# Qué he hecho? Donde ha quedado registrado? Y si hay que repetirlo? Y si hay que cambiar algo de la definición?
+# VOY BIEN JODIDO !
+# NUNA JAMAS ! Siempre parto de un fichero YAML subido aun GIT
