@@ -142,8 +142,81 @@ Nota:
 En kubernetes tenemos un huevo de tipos de volumenes... en función del uso que necesite
 
 Los volumenes se definen a nivel de POD... y se MONTAN a nivel de CONTENEDOR
----
+
+Tenemos 2 problemas al usar volumenes para persietncia de datos:
+ - En cuantos entornos/namespaces querré desplegar este pod? en 1? PROD/TEST/DEVELOP...
+     Y en todos se van a guardar los datos en el mismo volumen? NI DE COÑA !
+     Y entonces necesito 3 archivos de despliegue? El mnto sería una locura
+ - Quién escribe este fichero? el pod? el deployment(pod template)? DESARROLLO
+    Y yo, oh DESARROLLADOR, tengo que saber en que puñetera LUN de una cabina de fibra se guardan los datos? EIN? 
+    O el id de un volumen en AMAZON ? EIN?
+
+Qué se yo, oh persona que quiere despleguar su app en un entorno de producción o desarrollo... con respecto al almacenamiento?
+- Cuanto espacio quieres ?
+- Tipo de almacenamiento ? Rapidito / Redundante -> PRODUCCION ... desarrollo: Lentito / No redundante / encriptado
+
+Esto es lo que resuelven los:
+
 # PV, PVC
+
+# Qué es un PVC?
+
+Es una especificación del tipo de volumen que necesito... en mi lenguaje de desarrollador o de tio que quiere una app en un entorno.
+El PVC lo crea DESARROLLO
+
+# Qué es un PV?
+
+Una REFERENCIA a un volumen que existe por ahñi en algún sitio + junto con una espeficicación de ese volumen.
+El PV lo crea Administrración del cluster de kubernetes (los que administran el entorno de producción)
+
+DE NUEVO TENEMOS UNA SEPARACION DE RESPONSABILIDADES en kubernetes.
+
+El volumen y la petición de volumen se crean de forma totalmente independientes.
+En un cluster, tendré:
+- 50 volumenes creados por los sysadmins        CHICOS
+- 37 peticiones hechas por desarrolladores      CHICAS 
+
+Se van registrando cosillas por allí.
+Y esto es como si me registro en TINDER !
+
+Y el kubernetes hace MATCH !
+Mira si hay chicos con características "COMPATIBLES" con las chicas ;)
+Pa' que surja el amor...o el folleteo!
+
+ADMIN:                                          DATOS REALES DEL VOLUMEN PRECREADO
+    NFS
+    storageClassName: rapidito-redundante   √
+    capacity: 
+        storage: 10Gi                       √
+    accessModes:
+        - ReadWriteOnce                     √
+        - ReadWriteMany
+        - ReadOnlyMany
+DESARROLLADOR                                   CARTA A LOS REYES MAGOS ... quiero !
+    storageClassName: rapidito-redundante   √
+    resources:
+        requests: 
+            storage: 5Gi                    √
+    accessModes:
+        - ReadWriteOnce                     √
+        
+Y KUBERNETE SCREA EL AMOR <3           >
+
+Hace 8 años, los administradores de sistemas que operaban un cluster de kubernetes, creaban de antemano 50 volumenes donde fueran...
+Y los registraban en kubernetes....
+Y los desarrolladores iban haciendo sus pvcs... y los iban consumiendo
+
+Hoy en dia, montamos PROVISIONADORES AUTOMATIZADOS DE VOLUMENES, que son programas que:
+- Cuando un desarrollador solicita un PVC
+- Van Donde sea a CREAR automáticamente el volumen (CABINA, AWS, NFS)
+- Y registran ese volumen en kubernetes...
+- Y PIDEN a kubernetes que ese volumen sea asignado a la PVC que atendieron.
+
+De esos programas puedo tener 5 montados. Cada uno atendiendo a un determinado STORAGE CLASS
+De forma que cuando alguien pide un volumen REDUNDANTE, tendre un programa que lo cree en un determinado backend
+Mientras que cuando alguien pide un volumen CIFRADO, tendré otro programa que lo cree en otro determinado backend
+
+Los desarrolladores lo que saben son los STORAGE CLASS disponibles ... los tipos de almacenamiento que pueden pedir.
 ---
 # Qué se entiende por el log de un contenedor
 

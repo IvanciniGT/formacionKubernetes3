@@ -1,4 +1,62 @@
 apiVersion: v1
+kind:       PersistentVolume 
+            # Que no es sino una REFERENCIA A UN VOLUMEN QUE SE HA CREEADO PREVIAMENTE DONDE SEA: AWS, CABINA, NFS
+            # Junto con una especificacion de ese volumen
+metadata:
+    name:   el-volumen-1
+spec:
+    # Especificacion de ese volumen: COMO ES EL VOLUMEN que he creado fuera!
+    storageClassName: rapidito-redundante # Lo se tal y como he creado el volumen en la cabina o en AWS
+    capacity: 
+            storage: 10Gi # Este dato no es el tamaño real del volumen... es lo que yo me de la real gana de poner aquñi.
+                          # A lo mejor el volumen lo he creado con 50Gi ... y aquí pongo 5... Pringao de mi !
+                          # Pero kubernetes no revisa NADA de esto
+    accessModes:
+        - ReadWriteOnce
+        - ReadWriteMany
+        - ReadOnlyMany
+    # vvv La REFERENCIA A UN VOLUMEN que he creao
+    nfs:
+      server: 172.31.11.161
+      path: /home/ubuntu/environment/volumenes/nfs/contenedor1B
+---
+apiVersion: v1
+kind:       PersistentVolume 
+            # Que no es sino una REFERENCIA A UN VOLUMEN QUE SE HA CREEADO PREVIAMENTE DONDE SEA: AWS, CABINA, NFS
+            # Junto con una especificacion de ese volumen
+metadata:
+    name:   el-volumen-2
+spec:
+    # Especificacion de ese volumen: COMO ES EL VOLUMEN que he creado fuera!
+    storageClassName: rapidito-redundante # Lo se tal y como he creado el volumen en la cabina o en AWS
+    capacity: 
+            storage: 10Gi # Este dato no es el tamaño real del volumen... es lo que yo me de la real gana de poner aquñi.
+                          # A lo mejor el volumen lo he creado con 50Gi ... y aquí pongo 5... Pringao de mi !
+                          # Pero kubernetes no revisa NADA de esto
+    accessModes:
+        - ReadWriteOnce
+        - ReadWriteMany
+        - ReadOnlyMany
+    # vvv La REFERENCIA A UN VOLUMEN que he creao
+    nfs:
+      server: 172.31.11.161
+      path: /home/ubuntu/environment/volumenes/nfs/contenedor2
+---
+apiVersion: v1
+kind:       PersistentVolumeClaim
+metadata:
+    name:   mi-peticion-de-volumen-1
+spec:
+    resources:
+        requests: 
+            storage: 5Gi
+    storageClassName: rapidito-redundante
+    accessModes:
+        - ReadWriteOnce # Quiero un volumen donde pueda leer y escribir ... SOLO PARA 1 pod
+        #- ReadWriteMany # Quiero un volumen donde pueda leer y escribir ... SOLO PARA multiples pod
+        #- ReadOnlyMany
+---
+apiVersion: v1
 kind:       ConfigMap
 metadata:
     name:   configuraciones
@@ -107,7 +165,27 @@ spec:
         - name: persistente-nfs
           nfs:
             server: 172.31.11.161
-            path: /home/ubuntu/environment/contenedor1
+            path: /home/ubuntu/environment/volumenes/nfs/contenedor1
+          #fc:
+          #   targetWWNs:
+          #       - '500a0982991b8dc5'
+          #       - '500a0982891b8dc5'
+          #   lun: 2
+          #   fsType: ext4
+          #   readOnly: true
+          # 2 problemas:
+          # - En cuantos entornos/namespaces querré desplegar este pod? en 1? PROD/TEST/DEVELOP...
+          #     Y en todos se van a guardar los datos en el mismo volumen? NI DE COÑA !
+          #     Y entonces necesito 3 archivos de despliegue? El mnto sería una locura
+          # - Quién escribe este fichero? el pod? el deployment(pod template)? DESARROLLO
+          #.    Y yo, oh DESARROLLADOR, tengo que saber en que puñetera LUN de una cabina de fibra se guardan los datos? EIN? 
+          #.    O el id de un volemn en AMAZON ? EIN?
+        - name: persistente-2
+          #nfs:
+          #    server: 172.31.11.161
+          #    path: /home/ubuntu/environment/volumenes/nfs/contenedor1B
+          persistentVolumeClaim:
+            claimName: mi-peticion-de-volumen-1
     initContainers:
         - name:     contenedor-init-1
           image:    ubuntu:latest
@@ -143,6 +221,8 @@ spec:
               mountPath: /procesos
             - name:      persistente-nfs
               mountPath: /datosPersistentes
+            - name:      persistente-2
+              mountPath: /datosPersistentes2
         - name:     contenedor2
           image:    ubuntu:latest
           command:
