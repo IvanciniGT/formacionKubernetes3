@@ -66,7 +66,7 @@ En los entornos de producción, al elegir la imagen de un contenedor nos gustan 
 
 Para qué sirven los configmap y los secrets:
 - Para alimentar variables de entorno de nuestros pods
-
+- Inyectar ficheros de configuración a los contenedores
 
 Ventajas de usar configmaps y secrets:
 - Evito duplicidad... Los datos de 1 configmap los puedo usar en 50 sitios.
@@ -82,3 +82,69 @@ Ventajas de usar configmaps y secrets:
             configmap-desarrollo.yaml
             configmap-pruebas.yaml
             configmap-produccion.yaml
+
+## Sobre secrets
+
+Lo único que me garantizan los secrets es que dentro de la BBDD de kubernetes se guardan encriptados sus valores.
+Más me vale a mi tener cuado con los ficheros de definición de secrets... donde los pongo y quién tiene acceso.
+
+Alternativa:
+
+    $  kubectl create secret generic MISECRETO -n MINS --from-literal=VARIABLE=VALOR --from-literal=VARIABLE2=VALOR2
+    kubectl create secret generic MISECRETO -n ivan --from-literal=VARIABLE=VALOR --from-literal=VARIABLE2=VALOR2
+
+Nota:
+    
+    En la práctica NUNCA ESCRIBIMOS FICHEROS DE MANIFIESTO, como lo estamos haciendo en el curso,
+    por lo que esto no supone un problema.
+    
+# Volumenes
+
+> Para qué sirven los volumenes?
+
+- Persistencia de información tras el borrado de un contenedor
+  Compartir información entre contenedores de distintos pods (que pueden estar en distintas máquinas):
+
+
+    docker container create -v ALGO:ALGO2
+    docker-compose
+        volumes:
+            - ALGO:ALGO2
+        ALGO2: Ruta en el contenedor (Punto de montaje en el FS del contenedor que apunta a)
+        ALGO:  Ruta en el host
+    Esto no vale para persitencia en un entorno de PRODUCCION (en uno de juguete, como os creamos con docker si)
+    Por qué?
+        Si el host se jode... en kubernetes puedo mover el pod a otra máquina (lo borro y creo uno nuevo en otra máquina... lo hace kubernetes)
+        Y ... los datos? si estaban en ese host... JODIDO VOY
+    En un entorno de producción los datos no se pueden guardar a nivel de host. NO VALE.
+    Los tengo que guardar en un almacenamiento EXTERNO, accesible por red.
+    
+        Carpetas nfs compartidas en red
+        iscsi
+        cabinas de almacenamiento: por fibra 
+        volumen en AWS, GCP, AZURE, IBM cloud...
+
++ Compartir información entre contenedores del mismo pod
+    emptyDir: Carpeta vacía a nivel del host.
++ Inyectar ficheros de configuración a los contenedores 
+    - configMap
+    - secret
+    - emptyDir / initContainer
++ Hacer disponible a un contenedor ficheros/carpetas del host
+    En un SO Linux, un fichero es un concepto MUY POTENTE:
+    - Los procesos tienen un mapeo como ficheros
+    - Un socket de escritua a un demonio tiene un mapeo como fichero
+    - DiD: Docker in Docker: Hacer que un contenedor pueda crear nuevos contenedores:
+        - Inyecto a un contenedor el comando docker
+        - Y le inyecto el socket del demonio de docker.
+    hostPath (Lo más parecido a los volumenes de docker a los que estamos acostumbrados... y que en kubernetes valen solo para casos MUY MUY RAROS: DiD, Monitorización del host)
+
+En kubernetes tenemos un huevo de tipos de volumenes... en función del uso que necesite
+
+Los volumenes se definen a nivel de POD... y se MONTAN a nivel de CONTENEDOR
+---
+# PV, PVC
+---
+# Qué se entiende por el log de un contenedor
+
+La salida estandar y de error del proceso principal (el comando) que ejecuta el contenedor

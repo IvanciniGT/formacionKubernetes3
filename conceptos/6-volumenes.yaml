@@ -1,0 +1,156 @@
+apiVersion: v1
+kind:       ConfigMap
+metadata:
+    name:   configuraciones
+data:
+    dato1:  valor1
+    dato2:  valor2
+    nginx.conf: |
+        user                    nginx;   # Usuario con el que se crean los subprocesos . P ej. Workers
+        worker_processes        2;       # Numero de workers. Depende de las CPUs disponibles
+        error_log  /var/log/nginx/error.log warn;   # Ubicación fichero de log de errores . Con el nivel de severidad
+        pid        /var/run/nginx.pid;              # Ubicación fichero que contiene el PID del master de nginx
+        
+        events {
+            worker_connections  1024;              # Número de hilos /Conexiones simultaneas atendibles por UN worker
+        }
+        
+        ## Parte de la configuración que alude al protocolo http
+        
+        http {
+            include       /etc/nginx/mime.types;    # Tipos de archivos (asociados a extensiones) que nginx auto-reconoce
+            default_type  application/octet-stream; # Si no encuentra un tipo de datos en el fichero anterior, pon este. BINARIOS
+            log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                              '$status $body_bytes_sent "$http_referer" '
+                              '"$http_user_agent" "$http_x_forwarded_for"';
+                        # LISTADO DE VARIABLES EN NGINX: http://nginx.org/en/docs/varindex.html
+                            # En este caso, al formato, le denominamos "main"... es un nombre con el que referirnos a él.
+        
+            access_log  /var/log/nginx/access.log  main;    # Ubicacion de un archivo donde se genere un log de accesos / Peticiones HTTP
+            sendfile        on;                             # Cómo nginx lee los ficheros a la hora de mandarlos al cliente.
+                                                # Con sendfile off => POR DEFECTO
+                                                        # Nginx lee los ficheros a un buffer en RAM y desde ese buffer se van mandando al cliente
+                                                # Con sendfile on => NO ES POR DEFECTO
+                                                        # Nginx lee los ficheros y según va leyendo lo va mandando al cliente, sin cargarlo a un buffer propio en RAM
+                                                            # ESTO VA GUAY EN LINUX. En otros SO..... bufffff
+            #tcp_nopush     on;
+            keepalive_timeout  65;              # Tiempo que se va a mantener abierta la conexión sin notificaciones del cliente
+            #gzip  on;
+            upstream app1 {
+        #        least_conn;
+                server ip-172-31-15-80:8082 weight=10;
+                server ip-172-31-15-80:8083 weight=1;
+            }
+        
+            # Esto sería un VIRTUAL HOST
+            server {
+                listen  80;                 
+                server_name  localhost;     # El DNS a través del que se pueden recibir las peticiones adicionalmente
+                root /frontal;              # La ruta (lo que hay detrás del puerto en la URL) buscala en una carpeta de mi Sistema de Archivos
+                    # Hay algún contenido estático que yo vaya a servir en ALGUN escenario RARO?
+                        # Que pasa si hay un error
+                    
+                # Configurar una ruta para acceder al sitio1 (este está en otro nginx)
+                location = /sitio1 {
+                    return 302 /sitio1/;
+                }
+        
+                location /sitio1/ {
+        #            rewrite      /sitio1/carpeta/pagina.html     /carpeta/pagina.html      break;
+        #            rewrite      /sitio1/imagenes/imagen.jpg     /imagenes/imagen.jpg      break;
+        #            rewrite      ^/sitio1(/.*)$                  $1                        break;
+        
+                    proxy_buffering off;
+                    proxy_pass http://ip-172-31-15-80:8081/; # OJO CON LA BARRA... ME ESTA HACIENDO UN REWRITE. EL DE ARRIBA
+                }
+                # Configurar una ruta para acceder al app1 (este está en otro nginx)
+                location /app1/ {
+                    proxy_buffering on;
+                    proxy_buffers 10 10k;
+                    proxy_pass http://app1/;
+                }
+            }
+            
+        }                       # RUTA (location)
+        # www.guardiacivil.es     /sitio1 >>>>> sitio1
+        # www.guardiacivil.es     /app1 >>>>> APP1 (balanceo)
+---
+apiVersion: v1
+kind:       Pod
+
+metadata:
+    name:       pod-volumenes
+
+spec:
+    volumes:
+        - name: volumen-compartido
+          # tipo
+          emptyDir: {} # Esta carpeta vacia se crea en el HDD del host
+        - name: volumen-compartido-super-rapido
+          emptyDir: 
+            medium: Memory # En este caso, se toma un trozo de la RAM y se monta como una carpeta en el fs de los contenedores.
+        - name: configuracion
+          configMap:
+            name: configuraciones
+            # Igual que tengo el volumen de tipo configMap
+            # Tengo el volumen de tipo secret... que se usa igual
+            # Solo que los datos se sacan de un secret.
+            # Es decir, en la BBDD de kubernetes quedan encriptados
+            # Me vale guay para certificados, claves ssh...
+        - name: configuracion2
+          emptyDir: 
+            medium: Memory
+        - name: procesos
+          hostPath:
+            path: /proc
+            type: Directory
+        - name: persistente-nfs
+          nfs:
+            server: 172.31.11.161
+            path: /contenedor1
+    initContainers:
+        - name:     contenedor-init-1
+          image:    ubuntu:latest
+          command:
+            - echo 
+            - "hola"
+        - name:     contenedor-init-2
+          image:    bitnami/git
+          command:
+            - git
+            - clone 
+            - https://github.com/IvanciniGT/cursoNginX
+            - /descargas
+          volumeMounts:
+            - name:      configuracion2
+              mountPath: /descargas
+    containers:
+        - name:     contenedor1
+          image:    ubuntu:latest
+          command:
+            - sleep
+            - "3600"
+          volumeMounts:
+            - name:      volumen-compartido
+              mountPath: /compartido
+            - name:      volumen-compartido-super-rapido
+              mountPath: /super-rapido
+            - name:      configuracion
+              mountPath: /configuracion
+            - name:      configuracion2
+              mountPath: /otras-configuraciones
+            - name:      procesos
+              mountPath: /procesos
+            - name:      persistente-nfs
+              mountPath: /datosPersistentes
+        - name:     contenedor2
+          image:    ubuntu:latest
+          command:
+            - sleep
+            - "3600"
+          volumeMounts:
+            - name:      volumen-compartido
+              mountPath: /otra-ruta
+            - name:      volumen-compartido-super-rapido
+              mountPath: /super-rapido
+
