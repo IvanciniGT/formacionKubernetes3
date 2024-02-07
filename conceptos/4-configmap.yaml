@@ -1,0 +1,57 @@
+apiVersion:     v1
+kind:           Configmap
+
+metadata:
+    name:       mi-configmap-1
+
+data:
+    variable1:  valor1
+    variable2:  valor2
+---
+apiVersion:     v1
+kind:           Configmap
+
+metadata:
+    name:       mi-configmap-2
+
+data:
+    variable_a:  valora
+    variable_b:  valorb
+    variable_c:  valorc
+
+# Para qué sirven los configmap?
+# - Para alimentar variables de entorno de nuestros pods
+---
+apiVersion:     v1
+kind:           Pod
+
+metadata:
+    name:       prueba-configmap
+
+spec:
+    containers:
+        -   name:       contenedor
+            image:      ubuntu
+            command:
+                      - sleep
+                      - "3600"
+            envFrom: # Se usa menos
+                - configMapRef:
+                    name:   mi-configmap-1 # Todas las variables definidas en el configmap traelas al contenedor, tal cual
+                        # En mi contenedor tendré: variable1, variable2
+            env:
+                - name:     VARIABLE
+                  value:    VALOR
+                - name:     VAR_01
+                  valueFrom:            # ESTO ES LO QUE MAS SE USA
+                    configMapKeyRef:
+                        name:   mi-configmap-2
+                        key:    variable_a
+                - name:     VAR_02
+                  valueFrom:
+                    configMapKeyRef:
+                        name:   mi-configmap-2
+                        key:    variable_b
+                        # En este caso, del configmap-2, solo traigo 2 variables...
+                        # Y las renombro, al nombre que me interesa: variable_a -> VAR_01
+                        #                                            variable_b -> VAR_02

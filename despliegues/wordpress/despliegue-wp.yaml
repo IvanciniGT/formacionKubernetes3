@@ -63,4 +63,5 @@ spec:
                     - name:     MARIADB_DATABASE
                       value:    miwp
                 # Necesito persistencia ??? /var/lib/mysql
-                
+# TODO: Duplicidad de información
+# TODO: Información sensible
