@@ -1,0 +1,66 @@
+# Namespace para todo
+apiVersion:             v1
+kind:                   Namespace
+metadata:
+    name:               wp
+---
+# Deployment WP
+apiVersion:             apps/v1
+kind:                   Deployment
+metadata:
+    name:               wp
+spec:
+    replicas:           1
+    selector:
+        matchLabels:
+            app:        wp ### REFERENCIA A (1)
+    template:
+        metadata:
+            name:       wp-pod-template
+            labels:
+                app:    wp  # (1)
+        spec:
+            containers:
+                - name:         wp
+                  image:        wordpress:6.4 # La ultima 6.4, con su apache ready to go!
+                  env:
+                    - name:     WORDPRESS_DB_HOST
+                      value:    ???
+                    - name:     WORDPRESS_DB_USER
+                      value:    miusuario
+                    - name:     WORDPRESS_DB_PASSWORD
+                      value:    mipassword
+                    - name:     WORDPRESS_DB_NAME
+                      value:    miwp
+                # Necesito persistencia ??? /var/www/html
+---
+# Deployment MariaDB
+apiVersion:             apps/v1
+kind:                   Deployment
+metadata:
+    name:               mariadb
+spec:
+    replicas:           1
+    selector:
+        matchLabels:
+            app:        mariadb 
+    template:
+        metadata:
+            name:       mariadb-pod-template
+            labels:
+                app:    mariadb 
+        spec:
+            containers:
+                - name:         mariadb
+                  image:        mariadb:11.2
+                  env:
+                    - name:     MARIADB_ROOT_PASSWORD
+                      value:    mipasswordsupremo
+                    - name:     MARIADB_USER
+                      value:    miusuario
+                    - name:     MARIADB_PASSWORD
+                      value:    mipassword
+                    - name:     MARIADB_DATABASE
+                      value:    miwp
+                # Necesito persistencia ??? /var/lib/mysql
+                

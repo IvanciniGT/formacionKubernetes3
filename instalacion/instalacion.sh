@@ -76,6 +76,11 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 ## Montar el driver de red virtual para los pods: ELEGIMOS CALICO:
 kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.0/manifests/calico.yaml
 
+## En un entorno de producción REAL nunca haríamos esto
+# Kubernetes a priori no admite que los nodos que albergan el control-plane (sus propios programas) acojan otro tipo de programas
+# En nuestro caso tenemos solo 1 nodo... si no instalamos en él jodidos vamos... no hay otro sitio.
+kubectl taint node --all node-role.kubernetes.io/control-plane-
+
 ## Queremos montar el dashboard gráfico de kubernetes
 ### Es una herramienta oficial, que por defecto no se despliega en un cluster.
 ### La herramienta, si la voy a usar para echar un ojo al cluster, está bien.

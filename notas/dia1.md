@@ -120,7 +120,7 @@ Cuando me descargo una imagen UBUNTU, lo que encuentro dentro es:
 Cuando me descargo una imagen de FEDORA, lo que encuentro dentro es:
 - Las carpetas básicas de un SO POSIX
 - Los 4 comandos básicos de linux (sh, cp, mv, ls, cat, head, tail...)
-- Y algunos más: bash, dnf, rpm, ...
+- Y algunos más: bash, dnf, rpm, yum ...
 
 # Kubernetes
 
