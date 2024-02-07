@@ -61,3 +61,24 @@ En los entornos de producción, al elegir la imagen de un contenedor nos gustan 
                 Hoy puede apuntar a la 8.1.4 y mañana a la 8.6.8
                 Lo que implica que: Tiene la funcionalidad que necesito... 
                 pero puede que más (nuevas funcionaldiad que no necesito) que vengan con nuevos bugs
+                
+# Configmap y Secrets
+
+Para qué sirven los configmap y los secrets:
+- Para alimentar variables de entorno de nuestros pods
+
+
+Ventajas de usar configmaps y secrets:
+- Evito duplicidad... Los datos de 1 configmap los puedo usar en 50 sitios.
+- Separo la definición del despliegue de los datos concretos.
+    El despliegue que estamos haciendo de WP, solo lo quiero hacer en un entorno? PRODUCCION / PRUEBAS / DESARROLLO
+    En todos los entornos tendrá las mismas contraseñas, nombres de usuario... etc? NO
+    Quiero cambiar el Deployment entre ENTORNOS? NO
+    Lo que tendré es en cada entorno su propio CONFIGMAP... y un único deployment
+        - Quién configura el archivo de DEPLOYMENT / Quién lo escribe? DESARROLLO   \
+        - Quién escribe el configMap? QUIEN GESTIONE EL ENTORNO DE PRODUCCION       / Separación de responsabilidades
+    1 archivo con el deployment
+    3 archivos:
+            configmap-desarrollo.yaml
+            configmap-pruebas.yaml
+            configmap-produccion.yaml

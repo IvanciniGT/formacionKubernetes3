@@ -19,8 +19,6 @@ data:
     variable_b:  valorb
     variable_c:  valorc
 
-# Para qué sirven los configmap?
-# - Para alimentar variables de entorno de nuestros pods
 ---
 apiVersion:     v1
 kind:           Pod
