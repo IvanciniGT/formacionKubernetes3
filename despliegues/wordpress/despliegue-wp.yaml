@@ -4,11 +4,56 @@ kind:                   Namespace
 metadata:
     name:               wp
 ---
+apiVersion: v1
+kind:       PersistentVolumeClaim
+metadata:
+    name:   pvc-wp
+    namespace: wp
+spec:
+    resources:
+        requests: 
+            storage: 1Gi
+    accessModes:
+        - ReadWriteOnce
+---
+apiVersion: v1
+kind:       PersistentVolumeClaim
+metadata:
+    name:   pvc-mariadb
+    namespace: wp
+spec:
+    resources:
+        requests: 
+            storage: 1Gi
+    accessModes:
+        - ReadWriteOnce
+---
+apiVersion:     v1
+kind:           ConfigMap
+
+metadata:
+    name:       datos-bbdd
+
+data:
+    nombre: miwp
+---
+apiVersion:     v1
+kind:           Secret
+
+metadata:
+    name:       datos-secretos-bbdd
+
+data:
+    password:       bWlwYXNzd29yZA== # echo -n 'mipassword' | base64                                                          
+    root-password:  bWlwYXNzd29yZA== # echo -n 'mipassword' | base64                                                          
+    user:           bWl1c3Vhcmlv #echo -n 'miusuario' | base64                                                           
+---
 # Deployment WP
 apiVersion:             apps/v1
 kind:                   Deployment
 metadata:
     name:               wp
+    namespace:          wp
 spec:
     replicas:           1
     selector:
@@ -20,25 +65,41 @@ spec:
             labels:
                 app:    wp  # (1)
         spec:
+            volumes:
+                - name: datos-persistentes
+                  persistentVolumeClaim:
+                    claimName: pvc-wp
             containers:
                 - name:         wp
                   image:        wordpress:6.4 # La ultima 6.4, con su apache ready to go!
+                  volumeMounts:
+                    - name:      datos-persistentes
+                      mountPath: /var/www/html
                   env:
                     - name:     WORDPRESS_DB_HOST
-                      value:    ???
+                      value:    # TODO?????
                     - name:     WORDPRESS_DB_USER
-                      value:    miusuario
+                      valueFrom:        
+                        secretKeyRef:
+                            name:   datos-secretos-bbdd
+                            key:    user
                     - name:     WORDPRESS_DB_PASSWORD
-                      value:    mipassword
+                      valueFrom:        
+                        secretKeyRef:
+                            name:   datos-secretos-bbdd
+                            key:    password
                     - name:     WORDPRESS_DB_NAME
-                      value:    miwp
-                # Necesito persistencia ??? /var/www/html
+                      valueFrom:        
+                        configMapKeyRef:
+                            name:   datos-bbdd
+                            key:    nombre
 ---
 # Deployment MariaDB
 apiVersion:             apps/v1
 kind:                   Deployment
 metadata:
     name:               mariadb
+    namespace:          wp
 spec:
     replicas:           1
     selector:
@@ -50,18 +111,34 @@ spec:
             labels:
                 app:    mariadb 
         spec:
+            volumes:
+                - name: datos-persistentes
+                  persistentVolumeClaim:
+                    claimName: pvc-mariadb
             containers:
                 - name:         mariadb
                   image:        mariadb:11.2
+                  volumeMounts:
+                    - name:      datos-persistentes
+                      mountPath: /var/lib/mysql
                   env:
                     - name:     MARIADB_ROOT_PASSWORD
-                      value:    mipasswordsupremo
+                      valueFrom:        
+                        secretKeyRef:
+                            name:   datos-secretos-bbdd
+                            key:    root-password
                     - name:     MARIADB_USER
-                      value:    miusuario
+                      valueFrom:        
+                        secretKeyRef:
+                            name:   datos-secretos-bbdd
+                            key:    user
                     - name:     MARIADB_PASSWORD
-                      value:    mipassword
+                      valueFrom:        
+                        secretKeyRef:
+                            name:   datos-secretos-bbdd
+                            key:    password
                     - name:     MARIADB_DATABASE
-                      value:    miwp
-                # Necesito persistencia ??? /var/lib/mysql
-# TODO: Duplicidad de información
-# TODO: Información sensible
+                      valueFrom:        
+                        configMapKeyRef:
+                            name:   datos-bbdd
+                            key:    nombre
