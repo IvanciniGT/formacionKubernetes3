@@ -107,7 +107,7 @@ spec:
         - name: persistente-nfs
           nfs:
             server: 172.31.11.161
-            path: /contenedor1
+            path: /home/ubuntu/environment/contenedor1
     initContainers:
         - name:     contenedor-init-1
           image:    ubuntu:latest
