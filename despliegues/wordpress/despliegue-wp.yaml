@@ -33,6 +33,7 @@ kind:           ConfigMap
 
 metadata:
     name:       datos-bbdd
+    namespace:  wp
 
 data:
     nombre: miwp
@@ -42,6 +43,7 @@ kind:           Secret
 
 metadata:
     name:       datos-secretos-bbdd
+    namespace:  wp
 
 data:
     password:       bWlwYXNzd29yZA== # echo -n 'mipassword' | base64                                                          
@@ -148,6 +150,7 @@ kind:               Service
 
 metadata:
     name:           mariadb-service # Este es el nombre que se añade al DNS de kubernetes
+    namespace:      wp
 
 spec:
     type:               ClusterIP # Es el tipo por defecto... si a un servicio no le pongo tipo, es de tipo ClusterIP
@@ -163,6 +166,7 @@ kind:               Service
 
 metadata:
     name:           wp-service # Este es el nombre que se añade al DNS de kubernetes
+    namespace:      wp
 
 spec:
     type:               NodePort # Es el tipo por defecto... si a un servicio no le pongo tipo, es de tipo ClusterIP
@@ -181,6 +185,7 @@ kind:               Ingress
 
 metadata:
     name:           wp-ingress  
+    namespace:      wp
 
 spec:
     ingressClassName:   nginx # El ingress controller al que se le debe aplicar esta regla
