@@ -171,10 +171,139 @@ Las reglas de configuración de un PROXY REVERSO (INGRESS CONTROLLER) en kuberne
 
 - Ingress Controller: NO ES UN OBJETO DE KUBERNETES... es un programa que despliego en kubernetes
 - Ingress: ES UN OBJETO DE KUBERNETES. Son reglas que aplican al INGRESS CONTROLLER CONCRETO que haya instalado.
-- 
 
-kind
-kubernetes in docker
+---
+# Pruebas
 
-did
-docker in docker
+Vamos a montar unas apps en el cluster.... y el objetivo es dejar a kubernetes al mando del cluster. 
+Yo me quiero desentender.
+
+Como sabemos, si kubernetes detecta que un pod se cae, lo levanta de nuevo, 
+en la misma máquina o en otra... (según lo que diga el scheduler).
+
+Pero... la pregunta es: ¿Cómo sabe kubernetes que un pod se ha caído?
+
+Lo primero: Kubernetes, a través del gestor de contenedores que use (CRIO, containerd) 
+mira el proceso principal que está corriendo en el contenedor.
+
+Si ese proceso se cae, kubernetes reinicia el pod. ESTO LO HACE EN AUTO.
+
+Eso es suficiente? NO
+
+Un proceso puede estar levantado ... pero funcionando de forma inadecuada.
+
+Imaginad un servidor de aplicaciones JAVA: tomcat, weblogic, websphere.
+Eso es un proceso JAVA que se levanta (JVM) ... en esos servidores configuro un pool de ejecutores (HILOS atendiendo peticiones http)
+A veces los hilos se me quedan pillaos... en un momento me puedo quedar con todos los hilos pillaos...
+o el 90% y casi no estoy respondiendo peticiones... hago una cola de cojones.
+
+Para ello, en kubernetes existente los probes... y hay 3 tipos:
+
+- Startup probes
+    Para ver si el proceso de un contenedor ha arrancado adecuadamente
+    Espera 10 segundos... que tarda la app en arrancar más o menos    
+    Cada 5 segundos ejecuta qué? curl http://localhost:8080/status ---> OK: 200
+    Si no te responde en 3 segundos KO
+    Si falla 10 veces, dejando entre intentos 5 segundos: REINICIA EL POD
+        Le estoy dando a la aplicación 10+ 5x10 = 60 segundos para arrancar. Si en 6y0 segundo no contesta, reinicia.
+ESTA PRUEBA SE EJECUTA AL ARRANQUE
+- Liveness probes
+    Para ver si el proceso que corre en un contenedor está operativo
+    Cada 5 segundos ejecuta qué? curl http://localhost:8080/status ---> OK: 200 json :{status: RUNNING | MAINTENANCE}
+    Si no te responde en 3 segundos KO
+    Si falla 3 veces, dejando entre intentos 5 segundos: REINICIA EL POD
+ESTA PRUEBA SE EJECUTA DE PERPETUA
+- Readiness probes
+    Para ver si el proceso que corre en un contenedor está listo para prestar servicio
+    Cada 5 segundos ejecuta qué? curl http://localhost:8080/status ---> OK: 200 json :{status: RUNNING}
+    Si no te responde en 3 segundos KO
+    Si falla 3 veces, dejando entre intentos 5 segundos: LO SACA DEL POOL DEL SERVICIO (lo saca de balanceo)
+ESTA PRUEBA SE EJECUTA DE PERPETUA
+
+Imaginad una aplciación web que tengo.... qué pruebas le podría definir?
+Al wp le puedo pedir que se actualice! -> La web queda en modo MANTENIMIENTO.
+    Está viva... no quiero que reinicie... no jodas, que me dejas la instalación a medias
+    Pero... está listo el contenedor (web) para prestar servicio a los usuarios normales? NO... la saco de balanceo
+
+Esos los puedo configurar a nivel de cada contenedor. 
+
+Tengo una BBDD MARIADB.
+Le doy 3 minutos para que arranque... hasta que sea capaz de conectar con ella con usuario admin.
+
+Cómo se si está viva... (liveness) si me puedo conectar a ella como administrador de la bbdd.
+Eso implca que está ready? NO... puede estar haciendo un backup... o un restore... en modo mnto.
+
+Para que esté ready (y la meta en balanceo) debe ser capaz de permitirme conectarme pero con un usuario normal, no con admin
+
+Las pruebas concretas que puedo configurar:
+- Hacer peticiones a un puerto http...
+- Ejecutar un comando dentro del contenedor y ver el código de salida: 0 (GUAY) o no (RUINA)
+
+# Recursos
+
+Todo contenedor en kubernetes tiene una limitación de acceso a los recursos del cluster... 
+LA PONGA YO O NO ! Si no la pongo, en el ns hay definidos unos valores por defecto... que si no se han puesto, se heredan del cluster que tambien valores por defecto.
+Esos valores por defeecto se configuran en un objeto que tiene kubernetes: LIMITRANGE
+
+ resources:
+    requests:       # Es lo que la aplicación solicita que se le garantice              NO INTERPRETAR COMO MINIMO
+      cpu: 1
+      memory: 2Gi
+    limits:         # Es lo que la aplciación solicita que pueda llegar a usar          NO INTERPRETAR COMO MAXIMO
+      cpu: 1500m    # Aquí no hay problema
+      memory: 2Gi   # ESTE VALOR, a no ser que se conozca muy bien el funcionamiento de kubernetes, el de mis programas y que esté en un caso muy especial, SIEMPRE IGUAL AL REQUEST
+                    # Aquí si hay problema
+
+    Cluster         CAPACIDAD           COMPROMETIDO        SIN COMPROMETER     USO EN TIEMPO T
+                    cpu    memoria      cpu     memoria     cpu     memoria     cpu     memoria
+        nodo 1       4      10Gb                             0          2        0          2
+            pod1wp                       3          5                            3          5   KUBERNETES REINICIA EL POD POR LISTO
+            pod1mariadb                  1          3                            1          3
+        nodo 2       4      10Gb                             4          5
+            pod1nginx                    1          5        3          5        1          1   Y esto así siempre: CAGADA!
+            
+    Pods            REQUESTS            LIMITS
+                    cpu    memoria      cpu     memoria
+        pod1wp       3       5           10       8
+        pod1mariadb  1       3           2        5
+        pod1nginx    1       5           1        5
+        
+    El Scheduler es quién decide donde se ubica el pod... y para ello tiene en cuenta MUCHOS FACTORES:
+        - Resources (El Scheduler solo tiene en cuenta los REQUEST del pod y lo COMPROMETIDO de los nodos... el USO se la pela!)
+        - Afinidades
+        - Tolerancias
+        
+    El request es lo que se garantiza a cada pod... con lo que en cualquier caso va a poder contar. Y es lo que usa el Scheduler
+
+    CAGADA: Tengo mal dimensionado el pod... Hay 4Gbs que no se usan.... pero están bloqueados.
+    
+Este comportamiento no lo vemos solo en kubernetes.
+En JAVA levantamos una JVM... y en a máquina virtual le configuramos la memoria RAM que puede tomar:
+    -Xms1000m -Xmx1000m
+        ^           ^
+        ^           Memoria máxima
+        Memoria inicial
+        
+    Y EN JAVA, la gente de JAVA me dice: LOS DOS IGUALES... a no ser...
+    
+Los request de kubernetes son una medida de GRACIA !
+Si dentro de un contenedor tengo un programa JAVA: cuál es el primer sitio donde limito el uso de RAM? en JVM
+Si dentro de un contenedor tengo una BBDD: cuál es el primer sitio donde limito el uso de RAM? en la BBDD
+
+Si un programa tiene un bug o ha sido mal configurado, kubernetes lo capa!... como medida de gracia... antes de que afecte a otros programas.
+
+
+En kubernetes, el objetivo es que una aplicación ruede en cluster... 
+Yo no voy a configurar un megaservidor de apps JAVA con 64 Gbs de RAM y 16 cores...
+    Voy a configurar 4 servidores con 16 Gbs y 4 cores... y voy escalando según hace falta...
+    Si no estoy tirando recursos en muchas ocasiones
+Y la clave está en elegir una buen ratio entre RAM y CPU = MONITORIZACION
+
+
+# LimitRange
+
+Además de establecer los valores por defecto de limit y request de resources de los containers, imponen límite máximo y mínimo a los contenedores en los request y limits.
+
+# ResourceQuota
+
+Limitan el total de consumo de RAM, CPU (y otros) acumulado dentro de un ns (por todos los pods que allí existan)
