@@ -77,7 +77,7 @@ spec:
                       mountPath: /var/www/html
                   env:
                     - name:     WORDPRESS_DB_HOST
-                      value:    # TODO?????
+                      value:    mariadb-service:3307
                     - name:     WORDPRESS_DB_USER
                       valueFrom:        
                         secretKeyRef:
@@ -142,3 +142,56 @@ spec:
                         configMapKeyRef:
                             name:   datos-bbdd
                             key:    nombre
+---
+apiVersion:         v1
+kind:               Service
+
+metadata:
+    name:           mariadb-service # Este es el nombre que se añade al DNS de kubernetes
+
+spec:
+    type:               ClusterIP # Es el tipo por defecto... si a un servicio no le pongo tipo, es de tipo ClusterIP
+    ports:
+        - port:         3307 # Es el puerto de la IP del servicio
+          targetPort:   3306 # De los contenedores que ofrecen el servicio
+    selector:
+        app:            mariadb     # Pon detras de la IP del servicio en NETFILTER a todos los pods que 
+                                    # tengan esta etiqueta en el ns en el que se define este servicio
+---
+apiVersion:         v1
+kind:               Service
+
+metadata:
+    name:           wp-service # Este es el nombre que se añade al DNS de kubernetes
+
+spec:
+    type:               NodePort # Es el tipo por defecto... si a un servicio no le pongo tipo, es de tipo ClusterIP
+    ports:
+        - port:         8080  # Es el puerto de la IP del servicio
+          targetPort:   80    # De los contenedores que ofrecen el servicio
+          nodePort:     30880 # El de los nodos.
+                                # ^^^ ESTO es lo que docker hace con el -p... pero docker la hace en 1 sola máquina
+                                # Kubernetes en todas las del cluster
+    selector:
+        app:            wp     # Pon detras de la IP del servicio en NETFILTER a todos los pods que 
+                                    # tengan esta etiqueta en el ns en el que se define este servicio                                    
+---
+apiVersion:         networking.k8s.io/v1
+kind:               Ingress
+
+metadata:
+    name:           wp-ingress  
+
+spec:
+    ingressClassName:   nginx # El ingress controller al que se le debe aplicar esta regla
+    rules:
+        - host: miweb.miempresa.com # Cuando alguien llame al nginx usando: http://miweb.miempresa.com/ => wp-service:8080
+          http:
+            paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                        name: wp-service
+                        port:
+                            number: 8080
