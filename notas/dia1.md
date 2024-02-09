@@ -662,3 +662,10 @@ Plan para mañana:
         + Uniremos todos los clusters que vamos a crear mañana (clusters de 1 máquina) en un único cluster de kubernetes:
           Cada máquina que vamos a crear mañana tendrá 16Gbs de RAM y 4 cores: Somos 9:
             - 1 cluster grande con : 9 nodos: 144Gbs de RAM y 36 cores 
+
+service mess -> istio -> service mesh
+
+SELINUX / APPARMOUR
+    Módulo de seguridad avanzada en linux
+
+

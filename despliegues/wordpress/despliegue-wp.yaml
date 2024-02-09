@@ -2,13 +2,13 @@
 apiVersion:             v1
 kind:                   Namespace
 metadata:
-    name:               wp
+    name:               wp-ivan
 ---
 apiVersion: v1
 kind:       PersistentVolumeClaim
 metadata:
     name:   pvc-wp
-    namespace: wp
+    namespace: wp-ivan
 spec:
     resources:
         requests: 
@@ -21,7 +21,7 @@ kind:           ConfigMap
 
 metadata:
     name:       datos-bbdd
-    namespace:  wp
+    namespace:  wp-ivan
 
 data:
     nombre: miwp
@@ -31,7 +31,7 @@ kind:           Secret
 
 metadata:
     name:       datos-secretos-bbdd
-    namespace:  wp
+    namespace:  wp-ivan
 
 data:
     password:       bWlwYXNzd29yZA== # echo -n 'mipassword' | base64                                                          
@@ -43,7 +43,7 @@ apiVersion:             apps/v1
 kind:                   Deployment
 metadata:
     name:               wp
-    namespace:          wp
+    namespace:          wp-ivan
 spec:
     replicas:           1
     selector:
@@ -55,6 +55,8 @@ spec:
             labels:
                 app:    wp  # (1)
         spec:
+            nodeSelector:
+                nodo: ivan
             volumes:
                 - name: datos-persistentes
                   persistentVolumeClaim:
@@ -89,7 +91,7 @@ apiVersion:             apps/v1
 kind:                   StatefulSet
 metadata:
     name:               mariadb
-    namespace:          wp
+    namespace:          wp-ivan
 spec:
     serviceName:        mariadb-service # Esto es obligatorio
                         # Si alguien ataca a: mariadb-service:3307, a donde va? quién contesta?
@@ -124,6 +126,8 @@ spec:
             labels:
                 app:    mariadb 
         spec:
+            nodeSelector:
+                nodo: ivan
             containers:
                 - name:         mariadb
                   image:        mariadb:11.2
@@ -172,7 +176,7 @@ kind:               Service
 
 metadata:
     name:           mariadb-service # Este es el nombre que se añade al DNS de kubernetes
-    namespace:      wp
+    namespace:      wp-ivan
 
 spec:
     type:               ClusterIP # Es el tipo por defecto... si a un servicio no le pongo tipo, es de tipo ClusterIP
@@ -188,14 +192,14 @@ kind:               Service
 
 metadata:
     name:           wp-service # Este es el nombre que se añade al DNS de kubernetes
-    namespace:      wp
+    namespace:      wp-ivan
 
 spec:
     type:               NodePort # Es el tipo por defecto... si a un servicio no le pongo tipo, es de tipo ClusterIP
     ports:
         - port:         8080  # Es el puerto de la IP del servicio
           targetPort:   80    # De los contenedores que ofrecen el servicio
-          nodePort:     30880 # El de los nodos.
+          nodePort:     30001 # El de los nodos.
                                 # ^^^ ESTO es lo que docker hace con el -p... pero docker la hace en 1 sola máquina
                                 # Kubernetes en todas las del cluster
     selector:
@@ -207,7 +211,7 @@ kind:               Ingress
 
 metadata:
     name:           wp-ingress  
-    namespace:      wp
+    namespace:      wp-ivan
 
 spec:
     ingressClassName:   nginx # El ingress controller al que se le debe aplicar esta regla
