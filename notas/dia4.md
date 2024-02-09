@@ -299,7 +299,50 @@ Yo no voy a configurar un megaservidor de apps JAVA con 64 Gbs de RAM y 16 cores
     Si no estoy tirando recursos en muchas ocasiones
 Y la clave está en elegir una buen ratio entre RAM y CPU = MONITORIZACION
 
+## Para qué se usa la RAM por parte de un programa?
 
+- Para poner el propio código del programa
+- Almacenar datos de trabajo (depende de cuánto trabajo esté haciendo la app en un momento dado)
+- Thread Stack (qué hilos hay en ejecución y qué parte del código están ejecutando)
+- Cache (residente) Guardo datos que necesito disponer de ellos rápido (La persistencia la tengo en HDD, BBDD...)
+- Buffers (IO HDD, RED)
+
+Algunos de esos no dependen de la carga de trabajo: (1)
+- Para poner el propio código del programa
+- Cache (residente) Guardo datos que necesito disponer de ellos rápido (La persistencia la tengo en HDD, BBDD...)
+
+Otros si:
+- Almacenar datos de trabajo (depende de cuánto trabajo esté haciendo la app en un momento dado)
+- Thread Stack (qué hilos hay en ejecución y qué parte del código están ejecutando)
+- Buffers (IO HDD, RED)
+
+Mi objetivo es:
+- primero identificar la linea base de ram (1). MINIMO ABSOLUTO DE MEMORIA
+- Le meto carga de trabajo... la quiera. ESO LO LIMITA LA CPU
+    - En funciñon de la carga de trabajo que pueda ejecutar con una determina disponiblidad de cpu
+    - Tendré un requisito de memoria RAM ... y esta la calculo
+
+El problema es:
+- Imaginad que un programa tiene una linea base de 4Gbs de RAM
+  Si hago pods de 1 core y 5Gbs de RAM... eso sería bueno?
+    El problema es que en cada pod, solo tengo 1 GB de trabajo.
+    Si necesito 10 pods, necesito 10x5 = 50 Gbs de RAM .. en total = 10Gbs de trabajo
+        Ya que tengo 10 veces la cache + codigo en ram... 40Gbs
+    Pero si en lugar de 10, hubiera creado 5 pods:
+        10Gbs de trabajo / 5 : 2Gbs por pod + 4 linea base = 6 x 5 = 30 Gbs ~ 50Gbs de tener 10 pods
+    Y si creo 3 pods:
+        10Gbs / 3 = 3.5 Gbs por pod + 4 de base = 7.5 gbs por pod x 3 = 22 Gbs ~ 30 ~ 50
+    PARA LA MISMA CARGA DE TRABAJO!
+
+    Es más complejo...
+    Tengo que mirar el caso de uso real... si siempre tengo el sistema con esa carga de trabajo 
+    24x7... que me interesa? 3 pods... mucho menos consumo de RAM
+    Si cambia la carga de trabajo a lo largo del día mucho:
+    1am: 10% -> 2 pods vale (por HA)
+        En la opción de pods de 7.5 Gbs = 15Gbs
+        En la opción de 5Gbs pod pod = 10Gbs Gano 5 gbs de RAM
+        Con qué frecuencia pasa esto? PREGUNTAS / Que solo la monitorización puede responder!
+ 
 # LimitRange
 
 Además de establecer los valores por defecto de limit y request de resources de los containers, imponen límite máximo y mínimo a los contenedores en los request y limits.
@@ -307,3 +350,4 @@ Además de establecer los valores por defecto de limit y request de resources de
 # ResourceQuota
 
 Limitan el total de consumo de RAM, CPU (y otros) acumulado dentro de un ns (por todos los pods que allí existan)
+también por ejemplo del número total de pods, pvc, service que puedo tener en un ns

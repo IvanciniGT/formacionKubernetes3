@@ -16,18 +16,6 @@ spec:
     accessModes:
         - ReadWriteOnce
 ---
-apiVersion: v1
-kind:       PersistentVolumeClaim
-metadata:
-    name:   pvc-mariadb
-    namespace: wp
-spec:
-    resources:
-        requests: 
-            storage: 1Gi
-    accessModes:
-        - ReadWriteOnce
----
 apiVersion:     v1
 kind:           ConfigMap
 
@@ -98,12 +86,35 @@ spec:
 ---
 # Deployment MariaDB
 apiVersion:             apps/v1
-kind:                   Deployment
+kind:                   StatefulSet
 metadata:
     name:               mariadb
     namespace:          wp
 spec:
-    replicas:           1
+    serviceName:        mariadb-service # Esto es obligatorio
+                        # Si alguien ataca a: mariadb-service:3307, a donde va? quién contesta?
+                        # Alguno de las replicas (pods) de este statefulset... tenemos balanceo.. ESO ES LO QUE DA UN SERVICIO
+                        # Pero en un statefulset, además, tenemos a nuestra disposición:
+                        #   mariadb-0.mariadb-service:3306
+                        #   mariadb-1.mariadb-service:3306
+                        #   mariadb-2.mariadb-service:3306
+                        #   mariadb-3.mariadb-service:3306
+                        
+                        # Es el sufijo que pondré a los nombres de pods, para dar de alta en el DNS de kubernetes un nombre que apunté a la IP de POD.
+    
+    replicas:           1 # Kubernetes va a generar tantas replicas de esta plantilla como le pongamos aquí... o luego escalemos.
+                        # En los deplyments, cómo son los nombres de los pods que se generan?
+                            # Con una componente aleatoria.
+                        # En los statefulset, los nombres de los pods son secuenciales:
+                        #   mariadb-0
+                        #   mariadb-1
+                        #   mariadb-2
+                        #   mariadb-3
+                        # Esto es importantísimo. Permite:
+                        # - que kubernetes identifique qué pod se ha caido o es necesario mover a otro host.
+                        #   para así poder pincharle las mismas pvcs que al que reemplaza... LOS MISMOS DATOS
+                        # - que NOSOTROS humanos, podamos atacar (configurar) a un pod concreto.... porque son diferentes entre si... y hay casos donde no es igual atacar a uno u a otro.
+                        
     selector:
         matchLabels:
             app:        mariadb 
@@ -113,16 +124,9 @@ spec:
             labels:
                 app:    mariadb 
         spec:
-            volumes:
-                - name: datos-persistentes
-                  persistentVolumeClaim:
-                    claimName: pvc-mariadb
             containers:
                 - name:         mariadb
                   image:        mariadb:11.2
-                  volumeMounts:
-                    - name:      datos-persistentes
-                      mountPath: /var/lib/mysql
                   env:
                     - name:     MARIADB_ROOT_PASSWORD
                       valueFrom:        
@@ -144,6 +148,24 @@ spec:
                         configMapKeyRef:
                             name:   datos-bbdd
                             key:    nombre
+                  volumeMounts:
+                    - name:      pvc-mariadb #datos-persistentes
+                      mountPath: /var/lib/mysql
+            #volumes: # Se hace en automático la asignación a cada pod de su pvc, generado desde la plantilla
+            #    - name: datos-persistentes
+            #      persistentVolumeClaim:
+            #        claimName: pvc-mariadb
+    volumeClaimTemplates: # Definimos las plantillas de las pvc que necesitarán esos pods.
+                          # Para cada pod creado desde esta plantilla definida dentro del statefulset
+                          # kubernetes creará un pvc de cada plantilla de pvc que defina aquí
+        -   metadata:
+                name:   pvc-mariadb
+            spec:
+                resources:
+                    requests: 
+                        storage: 1Gi
+                accessModes:
+                    - ReadWriteOnce
 ---
 apiVersion:         v1
 kind:               Service

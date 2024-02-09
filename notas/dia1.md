@@ -652,7 +652,7 @@ Plan para mañana:
     JUEVES: 
             Services
             Ingress
-            NetworkPolicy
+            NetworkPolicy*     No se utilizan
     VIERNES:
             Jobs, CronJobs
             ResourceQuotas, LimitRanges
